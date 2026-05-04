@@ -1,0 +1,24 @@
+<view class="container">
+  <view class="pay-header">
+    <text class="pay-icon">🎵</text>
+    <text class="pay-title">确认支付</text>
+    <text class="pay-price">¥{{price}}</text>
+  </view>
+
+  <view class="pay-detail">
+    <view class="detail-row">
+      <text class="detail-label">套餐</text>
+      <text class="detail-value">{{tier === 'premium' ? '完整版 · MP4 + 歌词 + 曲谱' : '基础版 · MP4 + 歌词'}}</text>
+    </view>
+    <view class="detail-row">
+      <text class="detail-label">预计生成时间</text>
+      <text class="detail-value">1-3 分钟</text>
+    </view>
+  </view>
+
+  <button class="btn-primary pay-btn" bindtap="doPay">
+    微信支付 ¥{{price}}
+  </button>
+
+  <text class="tip">支付后自动开始创作，请耐心等待</text>
+</view>

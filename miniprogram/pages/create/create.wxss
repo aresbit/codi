@@ -1,0 +1,170 @@
+.container {
+  min-height: 100vh;
+  padding: 32rpx;
+}
+
+/* 进度条 */
+.progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 80rpx;
+  padding: 0 40rpx;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.step-num {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: #606070;
+  text-align: center;
+  line-height: 56rpx;
+  font-size: 24rpx;
+  margin-bottom: 8rpx;
+}
+
+.progress-step.active .step-num {
+  background: #e94560;
+  color: #fff;
+}
+
+.progress-step.done .step-num {
+  background: #0f3460;
+  color: #fff;
+}
+
+.step-label {
+  font-size: 22rpx;
+  color: #606070;
+}
+
+.progress-step.active .step-label { color: #e94560; }
+.progress-step.done .step-label { color: #4a90d9; }
+
+.progress-line {
+  width: 80rpx;
+  height: 2rpx;
+  background: rgba(255,255,255,0.08);
+  margin: 0 12rpx;
+  margin-bottom: 28rpx;
+}
+
+.progress-line.done { background: #0f3460; }
+
+/* 步骤内容 */
+.step-body {
+  padding: 0 8rpx;
+}
+
+.step-question {
+  font-size: 40rpx;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 48rpx;
+}
+
+/* 受众选择 - 卡片网格 */
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+.option-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20rpx;
+  padding: 40rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.15s;
+}
+
+.option-card.selected {
+  border-color: #e94560;
+  background: rgba(233,69,96,0.10);
+}
+
+.option-icon { font-size: 52rpx; margin-bottom: 16rpx; }
+.option-name { font-size: 30rpx; font-weight: 500; margin-bottom: 8rpx; }
+.option-hint { font-size: 22rpx; color: #707080; }
+
+/* 场合列表 */
+.occasion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.occasion-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16rpx;
+  padding: 28rpx 32rpx;
+  transition: all 0.15s;
+}
+
+.occasion-item.selected {
+  border-color: #e94560;
+  background: rgba(233,69,96,0.10);
+}
+
+.occasion-text { font-size: 30rpx; }
+
+/* 风格选择 */
+.style-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.style-chip {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 32rpx;
+  padding: 18rpx 36rpx;
+  font-size: 28rpx;
+  transition: all 0.15s;
+}
+
+.style-chip.selected {
+  background: rgba(233,69,96,0.15);
+  border-color: #e94560;
+  color: #e94560;
+}
+
+/* 个人备注输入 */
+.input-hint {
+  font-size: 24rpx;
+  color: #707080;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.personal-input {
+  width: 100%;
+  min-height: 180rpx;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  font-size: 28rpx;
+  color: #fff;
+  box-sizing: border-box;
+  margin-bottom: 48rpx;
+}
+
+.input-placeholder { color: #505060; }
+
+/* 按钮 */
+.next-btn {
+  margin-top: 32rpx;
+}
