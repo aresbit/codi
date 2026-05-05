@@ -28,7 +28,7 @@ ACE_SYNTH_MODEL = os.getenv("ACE_SYNTH_MODEL", "acestep-v15-turbo-Q4_K_M.gguf")
 ACE_INFERENCE_STEPS = int(os.getenv("ACE_INFERENCE_STEPS", "8"))
 ACE_GUIDANCE_SCALE = float(os.getenv("ACE_GUIDANCE_SCALE", "1.0"))
 ACE_SHIFT = float(os.getenv("ACE_SHIFT", "3.0"))
-ACE_DURATION = int(os.getenv("ACE_DURATION", "300"))
+ACE_DURATION = int(os.getenv("ACE_DURATION", "240"))
 
 # Job 轮询配置
 JOB_POLL_INTERVAL = 2.0
