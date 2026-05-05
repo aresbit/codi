@@ -129,7 +129,7 @@ cd models
 ### 架构
 
 ```
-微信小程序 → FastAPI (port 8000) → acestep.cpp server (port 8085) → CUDA
+webapp → FastAPI (port 8000) → acestep.cpp server (port 8085) → CUDA
 ```
 
 ### 修改 `backend/generator.py`
