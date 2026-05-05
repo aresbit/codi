@@ -1,6 +1,6 @@
-import { OrderRequest, OrderResponse, OrderStatusResponse } from "@/types";
+import type { OrderRequest, OrderResponse, OrderStatusResponse } from "@/types";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -23,11 +23,6 @@ export const api = {
 
   getOrderStatus: (orderId: string) =>
     request<OrderStatusResponse>(`/api/orders/${orderId}`),
-
-  triggerGenerate: (orderId: string) =>
-    request<{ status: string }>(`/api/orders/${orderId}/generate`, {
-      method: "POST",
-    }),
 
   getFileUrl: (orderId: string, filename: string) =>
     `${BASE_URL}/api/files/${orderId}/${filename}`,

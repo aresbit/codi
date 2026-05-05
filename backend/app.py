@@ -1,5 +1,5 @@
 """
-SongCraft API — 泛音乐定制服务
+Codi API — AI 定制音乐
 FastAPI 后端主入口
 """
 
@@ -8,29 +8,37 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import select
 
-from config import STYLES, OCCASIONS, AUDIENCES, PRICE_TIER_BASIC, PRICE_TIER_PREMIUM
-from models import Base, Order, OrderStatus, PriceTier
+from config import STYLES, OCCASIONS, AUDIENCES
+from models import Base, Order, OrderStatus
 from generator import build_music_prompt, generate_with_ace_step
-from notation import generate_sheet_music
 from video import compose_video
 
 # ---- 初始化 ----
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./songcraft.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./codi.db")
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
-OUTPUT_DIR = Path(os.getenv("SONGCRAFT_OUTPUT", "./output"))
+OUTPUT_DIR = Path(os.getenv("CODI_OUTPUT", "./output"))
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-app = FastAPI(title="SongCraft", version="0.1.0")
+app = FastAPI(title="Codi", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -47,22 +55,19 @@ class CreateOrderRequest(BaseModel):
     personal_note: str = ""
     style: str         # mountain_song/folk/pop_ballad/rock/rap/rnb/chinese_style/light_music
     language: str = "zh"
-    tier: str = "basic"  # basic / premium
+    generate_video: bool = False  # 默认可选，无需等待视频合成
+    exact_lyrics: str = ""       # 用户提供的精确歌词（可选），传入后将使用 format 模式不修改
 
 
 class CreateOrderResponse(BaseModel):
     order_id: str
-    price: float
-    payment_params: dict | None  # 微信支付调起参数
 
 
 class OrderStatusResponse(BaseModel):
     order_id: str
     status: str
-    price: float
-    tier: str
+    audio_url: str | None
     video_url: str | None
-    sheet_music_url: str | None
     lyrics: str | None
     error_message: str | None
 
@@ -92,55 +97,34 @@ async def list_audiences():
 
 
 @app.post("/api/orders", response_model=CreateOrderResponse)
-async def create_order(req: CreateOrderRequest, request: Request):
-    """
-    创建订单：
-    1. 用户在三步问卷后提交
-    2. 生成订单，返回微信支付参数
-    """
+async def create_order(req: CreateOrderRequest, background_tasks: BackgroundTasks):
+    """创建订单并立即开始生成"""
     # 验证输入
     if req.style not in STYLES:
         raise HTTPException(400, f"不支持的风格: {req.style}")
     if req.audience not in AUDIENCES:
         raise HTTPException(400, f"不支持的受众: {req.audience}")
-    if req.tier not in ("basic", "premium"):
-        raise HTTPException(400, f"不支持的套餐: {req.tier}")
 
     order_id = datetime.utcnow().strftime("%Y%m%d%H%M%S") + uuid.uuid4().hex[:8]
-    price = PRICE_TIER_PREMIUM if req.tier == "premium" else PRICE_TIER_BASIC
 
     order = Order(
         id=order_id,
-        status=OrderStatus.pending,
+        status=OrderStatus.generating,
         audience=req.audience,
         occasion=req.occasion,
         personal_note=req.personal_note,
         style=req.style,
         language=req.language,
-        tier=PriceTier(req.tier),
-        price=price,
+        generate_video="true" if req.generate_video else "false",
     )
 
     async with AsyncSessionLocal() as session:
         session.add(order)
         await session.commit()
 
-    # 获取支付参数（MVP阶段如果没配微信商户，返回模拟数据）
-    payment_params = None
-    try:
-        from payment import create_jsapi_order
-        openid = request.headers.get("X-WX-OpenID", "")
-        desc = f"AI定制歌曲 · {STYLES[req.style]['name']}"
-        payment_params = await create_jsapi_order(order_id, req.tier, openid, desc)
-    except Exception:
-        # MVP 回退：直接标记为已支付（测试用）
-        payment_params = {"mode": "test", "order_id": order_id}
-
-    return CreateOrderResponse(
-        order_id=order_id,
-        price=price,
-        payment_params=payment_params,
-    )
+    # 后台异步生成
+    background_tasks.add_task(_generate_song, order_id, req.exact_lyrics)
+    return CreateOrderResponse(order_id=order_id)
 
 
 @app.get("/api/orders/{order_id}", response_model=OrderStatusResponse)
@@ -157,44 +141,18 @@ async def get_order_status(order_id: str):
         return OrderStatusResponse(
             order_id=order.id,
             status=order.status.value,
-            price=order.price,
-            tier=order.tier.value,
+            audio_url=order.audio_url,
             video_url=order.video_url,
-            sheet_music_url=order.sheet_music_url,
             lyrics=order.lyrics,
             error_message=order.error_message,
         )
 
 
-@app.post("/api/orders/{order_id}/generate")
-async def trigger_generation(order_id: str, background_tasks: BackgroundTasks):
-    """
-    触发歌曲生成（支付成功后调用）。
-    异步处理：后台生成 → 完成后更新订单状态。
-    """
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Order).where(Order.id == order_id)
-        )
-        order = result.scalar_one_or_none()
-        if not order:
-            raise HTTPException(404, "订单不存在")
-
-        if order.status != OrderStatus.pending:
-            raise HTTPException(400, f"订单状态不正确: {order.status}")
-
-        order.status = OrderStatus.generating
-        await session.commit()
-
-    # 后台异步生成
-    background_tasks.add_task(_generate_song, order_id)
-    return {"status": "generating"}
-
-
-async def _generate_song(order_id: str):
+async def _generate_song(order_id: str, exact_lyrics: str = ""):
     """
     完整生成流程：
-    Prompt构建 → ACE-Step生成 → 曲谱渲染 → 视频合成
+    Prompt构建 → ACE-Step生成 → MP4视频合成
+    exact_lyrics: 用户提供的精确歌词（可选），传参后将使用 format 模式不修改
     """
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(Order).where(Order.id == order_id))
@@ -208,6 +166,7 @@ async def _generate_song(order_id: str):
         try:
             # 1. 构建 prompt
             prompt_data = build_music_prompt(
+                exact_lyrics=exact_lyrics,
                 audience_key=order.audience,
                 occasion_key=order.occasion,
                 personal_note=order.personal_note,
@@ -222,20 +181,16 @@ async def _generate_song(order_id: str):
 
             order.lyrics = lyrics
 
-            # 3. 曲谱生成（仅 premium）
-            sheet_pngs = None
-            if order.tier == PriceTier.premium:
-                sheet_pngs = generate_sheet_music(audio_path, order_id)
+            # 3. 保存音频结果
+            audio_filename = os.path.basename(audio_path)
+            order.audio_url = f"/api/files/{order_id}/{audio_filename}"
 
-            # 4. 合成 MP4
-            style_name = prompt_data["style_name"]
-            video_path = compose_video(audio_path, lyrics, sheet_pngs,
-                                       order_id, style_name)
+            # 4. 可选合成 MP4
+            if order.generate_video == "true":
+                style_name = prompt_data["style_name"]
+                video_path = compose_video(audio_path, lyrics, order_id, style_name)
+                order.video_url = f"/api/files/{order_id}/{order_id}.mp4"
 
-            # 5. 保存结果
-            order.video_url = f"/api/files/{order_id}/{order_id}.mp4"
-            if sheet_pngs:
-                order.sheet_music_url = f"/api/files/{order_id}/sheet_music.png"
             order.status = OrderStatus.completed
             order.completed_at = datetime.utcnow()
 
@@ -253,38 +208,6 @@ async def serve_file(order_id: str, filename: str):
     if not file_path.exists():
         raise HTTPException(404, "文件不存在")
     return FileResponse(file_path)
-
-
-# ---- 微信支付回调 ----
-
-@app.post("/api/pay/notify")
-async def payment_notify(request: Request):
-    """微信支付异步通知"""
-    body = await request.body()
-    signature = request.headers.get("Wechatpay-Signature", "")
-    serial = request.headers.get("Wechatpay-Serial", "")
-    timestamp = request.headers.get("Wechatpay-Timestamp", "")
-    nonce = request.headers.get("Wechatpay-Nonce", "")
-
-    from payment import verify_payment_notification
-    result = await verify_payment_notification(body, signature, serial,
-                                               timestamp, nonce)
-    if not result:
-        return {"code": "FAIL", "message": "签名验证失败"}
-
-    order_id = result["order_id"]
-    transaction_id = result["transaction_id"]
-
-    async with AsyncSessionLocal() as session:
-        r = await session.execute(select(Order).where(Order.id == order_id))
-        order = r.scalar_one_or_none()
-        if order:
-            order.status = OrderStatus.paid
-            order.wx_transaction_id = transaction_id
-            order.paid_at = datetime.utcnow()
-            await session.commit()
-
-    return {"code": "SUCCESS"}
 
 
 # ---- 健康检查 ----

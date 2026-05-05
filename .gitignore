@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+backend/__pycache__/
+*.db
+*.log
+
+# Node
+node_modules/
+webapp/node_modules/
+
+# Build output
+backend/output/
+acestep/build-gpu/
+acestep/build-cpu/
+acestep/build/
+
+# Environment
+.env
+backend/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Auto-generated AI files
+.learnings/
+.self_improving_*
+
+# Model files (large binaries)
+*.gguf
+*.bin
+models/

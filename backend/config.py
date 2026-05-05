@@ -1,6 +1,6 @@
 """
-SongCraft — 泛音乐定制微信小程序后端
-用户扫码 → 三步问卷 → 付钱 → ACE-Step生成歌曲 → MP4(歌词+曲谱)交付
+Codi — AI 定制音乐后端
+三步问卷 → ACE-Step生成歌曲 → MP3/MP4交付
 """
 
 STYLES = {
@@ -34,17 +34,36 @@ AUDIENCES = {
     "colleague": "送给同事或团队",
 }
 
+# 语言映射
+LANGUAGE_MAP = {
+    "zh":  {"label": "中文",      "vocal": "zh", "prompt_lang": "Chinese (Mandarin)"},
+    "en":  {"label": "English",   "vocal": "en", "prompt_lang": "English"},
+    "ja":  {"label": "日本語",    "vocal": "ja", "prompt_lang": "Japanese"},
+    "ko":  {"label": "한국어",    "vocal": "ko", "prompt_lang": "Korean"},
+    "fr":  {"label": "Français",  "vocal": "fr", "prompt_lang": "French"},
+    "de":  {"label": "Deutsch",   "vocal": "de", "prompt_lang": "German"},
+    "es":  {"label": "Español",   "vocal": "es", "prompt_lang": "Spanish"},
+    "pt":  {"label": "Português", "vocal": "pt", "prompt_lang": "Portuguese"},
+    "ru":  {"label": "Русский",   "vocal": "ru", "prompt_lang": "Russian"},
+    "th":  {"label": "ไทย",       "vocal": "th", "prompt_lang": "Thai"},
+    "vi":  {"label": "Tiếng Việt","vocal": "vi", "prompt_lang": "Vietnamese"},
+}
+
 PROMPT_TEMPLATE = """
 [Music Generation Prompt]
 Style: {style_name} — {style_tags}
 Occasion: {occasion}
 Audience: {audience}
-Lyrics theme: Write lyrics in {language} about {theme}.
-Personal touch: {personal_note}
 Song structure: intro → verse1 → chorus → verse2 → chorus → bridge → chorus → outro.
+
+IMPORTANT - LANGUAGE REQUIREMENT:
+ALL lyrics must be written EXCLUSIVELY in {language}. Do NOT mix languages.
+Every single word in the lyrics output must be in {language} only.
+The vocals must be sung in {language}.
+{chinese_hint}Lyrics theme: {theme}
+Personal touch: {personal_note}
+
+Output the song with clear section markers [INTRO], [VERSE], [CHORUS], [BRIDGE], [OUTRO].
 Make the melody memorable and the arrangement professional.
-IMPORTANT: Output the song with clear section markers [INTRO], [VERSE], [CHORUS], [BRIDGE], [OUTRO].
 """
 
-PRICE_TIER_BASIC = 5.00    # MP4 + 歌词
-PRICE_TIER_PREMIUM = 8.00  # MP4 + 歌词 + 曲谱

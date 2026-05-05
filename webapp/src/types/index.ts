@@ -2,12 +2,12 @@ export type Audience = "lover" | "friend" | "family" | "self" | "colleague";
 export type Occasion =
   | "love" | "proposal" | "wedding" | "birthday"
   | "graduation" | "missing" | "encourage" | "thanks" | "new_year";
+export type Language = "zh" | "en" | "ja" | "ko" | "fr" | "es";
 export type Style =
   | "mountain_song" | "folk" | "pop_ballad" | "rock"
   | "rap" | "rnb" | "chinese_style" | "light_music";
-export type Tier = "basic" | "premium";
 export type Step = 1 | 2 | 3;
-export type OrderStatus = "pending" | "paid" | "generating" | "completed" | "failed";
+export type OrderStatus = "pending" | "generating" | "completed" | "failed";
 
 export interface StyleInfo {
   key: Style;
@@ -19,23 +19,20 @@ export interface OrderRequest {
   occasion: Occasion;
   personal_note: string;
   style: Style;
-  language: string;
-  tier: Tier;
+  language: Language;
+  generate_video: boolean;
+  exact_lyrics: string;
 }
 
 export interface OrderResponse {
   order_id: string;
-  price: number;
-  payment_params: Record<string, string> | null;
 }
 
 export interface OrderStatusResponse {
   order_id: string;
   status: OrderStatus;
-  price: number;
-  tier: Tier;
+  audio_url: string | null;
   video_url: string | null;
-  sheet_music_url: string | null;
   lyrics: string | null;
   error_message: string | null;
 }
